@@ -1652,3 +1652,19 @@ export type CliApplication = {
 export type SandboxCommandService = {
   execute(argumentsList: string[]): Promise<number>;
 };
+
+// ---------------------------
+//----------------- HARMONYOS PUSH DELIVERY ------------
+/** A durable HarmonyOS notification delivery attempt. The endpoint id resolves the
+ * current device token at send time, so disabling/revoking a device also cancels
+ * queued deliveries. Timestamps are milliseconds since the Unix epoch; payload_json
+ * contains routing metadata only, never conversation text or credentials. */
+export type HarmonyPushJob = {
+  id: string;
+  user_id: number;
+  endpoint_id: string;
+  payload_json: string;
+  attempts: number;
+  next_attempt_at: number;
+  expires_at: number;
+};

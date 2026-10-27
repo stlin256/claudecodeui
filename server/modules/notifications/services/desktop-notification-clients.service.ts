@@ -1,6 +1,7 @@
 import type { WebSocket } from 'ws';
 
 import { notificationChannelEndpointsDb } from '@/modules/database/index.js';
+import { enqueueHarmonyPush } from '@/modules/notifications/services/harmony-push.service.js';
 
 const DESKTOP_CHANNEL = 'desktop';
 
@@ -83,9 +84,18 @@ export function unregisterDesktopNotificationClient(ws: WebSocket): void {
   clientBySocket.delete(ws);
 }
 
+/** Used by notification orchestration to send socket deliveries and queue offline HarmonyOS devices. */
 export function sendDesktopNotification(userId: unknown, payload: unknown): { attempted: number; sent: number } {
   const normalizedUserId = normalizeUserId(userId);
   if (!normalizedUserId) return { attempted: 0, sent: 0 };
+
+  // Offline phones receive Push Kit deliveries even when no desktop socket exists.
+  try {
+    enqueueHarmonyPush(normalizedUserId, payload);
+  } catch {
+    // A full/unavailable mobile outbox must not interrupt existing desktop delivery.
+    console.error('HarmonyOS notification enqueue failed');
+  }
 
   const clients = getUserClients(normalizedUserId);
   if (!clients?.size) return { attempted: 0, sent: 0 };

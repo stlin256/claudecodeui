@@ -1,6 +1,8 @@
 import express from 'express';
 
 import { notificationChannelEndpointsDb, notificationPreferencesDb } from '@/modules/database/index.js';
+import { isHarmonyPushConfigured } from '@/modules/notifications/services/harmony-push.service.js';
+import { registerNotificationEndpoint } from '@/modules/notifications/services/notification-endpoint-registration.service.js';
 
 const router = express.Router();
 
@@ -66,18 +68,29 @@ router.post('/endpoints/current', (req, res) => {
       return res.status(400).json({ error: 'channel and endpointId are required' });
     }
 
-    const userId = readUserId(req);
-    const endpoint = notificationChannelEndpointsDb.upsertEndpoint({
-      userId,
+    const normalizedMetadata: Record<string, unknown> = metadata && typeof metadata === 'object' && !Array.isArray(metadata) ? metadata : {};
+    if (normalizedMetadata.platform === 'harmonyos') {
+      const pushToken = normalizedMetadata.huaweiPushToken;
+      if (normalizedChannel !== 'desktop' || normalizedEndpointId.length > 160 ||
+        (enabled !== false && (typeof pushToken !== 'string' || pushToken.length < 16 ||
+          pushToken.length > 4096 || /[\s\x00-\x1f\x7f]/.test(pushToken)))) {
+        return res.status(400).json({ error: 'Invalid HarmonyOS notification endpoint' });
+      }
+      if (enabled !== false && !isHarmonyPushConfigured()) {
+        return res.status(503).json({ error: 'Server Huawei Push Kit is not configured' });
+      }
+    }
+    const result = registerNotificationEndpoint({
+      userId: readUserId(req),
       channel: normalizedChannel,
       endpointId: normalizedEndpointId,
-      label,
-      metadata: metadata && typeof metadata === 'object' ? metadata : {},
+      label: typeof label === 'string' ? label.slice(0, 120) : null,
+      metadata: normalizedMetadata,
       enabled: enabled !== false,
     });
 
-    const preferences = updateChannelPreference(userId, normalizedChannel);
-    return res.json({ success: true, endpoint: sanitizeEndpoint(endpoint), preferences });
+    return res.json({ success: true, endpoint: sanitizeEndpoint(result.endpoint),
+      preferences: result.preferences, harmonyPushConfigured: result.harmonyPushConfigured });
   } catch (error) {
     console.error('Error registering notification endpoint:', error);
     return res.status(500).json({ error: 'Failed to register notification endpoint' });

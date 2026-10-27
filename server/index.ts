@@ -54,7 +54,7 @@ import { worktreesRoutes } from './modules/worktrees/index.js';
 import browserUseMcpRoutes from './modules/browser-use/browser-use-mcp.routes.js';
 import { browserUseService } from './modules/browser-use/browser-use.service.js';
 import { initializeDatabase, sessionsDb } from './modules/database/index.js';
-import { configureWebPush } from './modules/notifications/index.js';
+import { configureWebPush, startHarmonyPush } from './modules/notifications/index.js';
 
 const __dirname = getModuleDirectory(import.meta.url);
 // The server source runs from /server, while the compiled output runs from /dist-server/server.
@@ -336,6 +336,7 @@ async function startServer() {
 
         // Configure Web Push (VAPID keys)
         configureWebPush();
+        startHarmonyPush();
 
         // Check if running in production mode (dist folder exists)
         const distIndexPath = path.join(APP_ROOT, 'dist', 'index.html');

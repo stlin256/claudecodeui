@@ -288,6 +288,18 @@ ${NOTIFICATION_CHANNEL_ENDPOINTS_TABLE_SCHEMA_SQL}
 CREATE INDEX IF NOT EXISTS idx_notification_channel_endpoints_user_channel ON notification_channel_endpoints(user_id, channel);
 CREATE INDEX IF NOT EXISTS idx_notification_channel_endpoints_enabled ON notification_channel_endpoints(enabled);
 
+-- Durable outbox: no bearer or Huawei Push Token is copied into queued events.
+CREATE TABLE IF NOT EXISTS harmony_push_jobs (
+  id TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  endpoint_id TEXT NOT NULL,
+  payload_json TEXT NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  next_attempt_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_harmony_push_due ON harmony_push_jobs(next_attempt_at);
+
 ${PROJECTS_TABLE_SCHEMA_SQL}
 -- NOTE: These indexes are created in migrations after legacy table-shape repairs.
 -- Creating them here can fail on upgraded installs where projects lacks those columns.

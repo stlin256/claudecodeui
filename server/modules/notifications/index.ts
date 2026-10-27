@@ -22,3 +22,4 @@ export { handleDesktopNotificationsConnection } from '@/modules/notifications/we
 export { getPublicKey } from './vapid-keys.service.js';
 // configureWebPush: used by the server entrypoint during notification startup.
 export { configureWebPush } from './vapid-keys.service.js';
+export { startHarmonyPush } from '@/modules/notifications/services/harmony-push.service.js';
