@@ -91,6 +91,31 @@ test('HarmonyOS outbox survives restart, retries provider failures and honors re
       await flushHarmonyPush();
       assert.equal(requests, 3);
     });
+    await t.test('filters all four device levels and rechecks queued work without muting other devices', async () => {
+      notificationPreferencesDb.updatePreferences(userId, { channels: { desktop: true }, events: { actionRequired: true } });
+      const metadata = { platform: 'harmonyos', huaweiPushToken: 'test-token-1234567890' };
+      for (const [code, key] of [['permission.required', 'actionRequired'], ['run.failed', 'error'], ['run.stopped', 'completion'], ['agent.notification', 'info']]) {
+        notificationChannelEndpointsDb.upsertEndpoint({ userId, channel: 'desktop', endpointId: 'phone',
+          metadata: { ...metadata, notificationEvents: { [key]: false } } });
+        sendDesktopNotification(userId, { data: { sessionId: 'session-1', code } });
+        assert.equal(harmonyPushJobsDb.due().length, 0);
+      }
+      notificationChannelEndpointsDb.upsertEndpoint({ userId, channel: 'desktop', endpointId: 'phone', metadata });
+      sendDesktopNotification(userId, event);
+      assert.equal(harmonyPushJobsDb.due().length, 1);
+      notificationChannelEndpointsDb.upsertEndpoint({ userId, channel: 'desktop', endpointId: 'phone',
+        metadata: { ...metadata, notificationEvents: { actionRequired: false } } });
+      await flushHarmonyPush();
+      assert.equal(requests, 3);
+      assert.equal(harmonyPushJobsDb.due().length, 0);
+      notificationChannelEndpointsDb.upsertEndpoint({ userId, channel: 'desktop', endpointId: 'second-phone', metadata });
+      sendDesktopNotification(userId, event);
+      const jobs = harmonyPushJobsDb.due();
+      assert.equal(jobs.length, 1);
+      assert.equal(jobs[0].endpoint_id, 'second-phone');
+      assert.equal(notificationPreferencesDb.getPreferences(userId).events.actionRequired, true);
+      harmonyPushJobsDb.remove(jobs[0].id);
+    });
     await t.test('expires stale jobs without delivering them', async () => {
       harmonyPushJobsDb.enqueue(userId, 'phone', JSON.stringify(harmonyRoutingPayload(event)), Date.now() - 3600001);
       await flushHarmonyPush();

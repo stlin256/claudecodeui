@@ -40,6 +40,14 @@ function jwt(account: HuaweiCredentials): string {
   }).toString('base64url')}`;
 }
 
+function deviceAllowsEvent(metadata: Record<string, unknown>, code: string): boolean {
+  const levels = metadata.notificationEvents;
+  if (!levels || typeof levels !== 'object' || Array.isArray(levels)) return true;
+  const key = code === 'permission.required' ? 'actionRequired'
+    : code === 'run.failed' ? 'error' : code.startsWith('run.') ? 'completion' : 'info';
+  return (levels as Record<string, unknown>)[key] !== false;
+}
+
 /** Used by the desktop delivery adapter and notification tests. Only routing metadata
  * is retained; neither the session name nor the original body reaches the lock screen. */
 export function harmonyRoutingPayload(payload: unknown): { sessionId: string | null; code: string } {
@@ -53,10 +61,11 @@ export function harmonyRoutingPayload(payload: unknown): { sessionId: string | n
  * HarmonyOS devices. Existing web/Electron notification behavior stays intact. */
 export function enqueueHarmonyPush(userId: number, payload: unknown): void {
   if (!isHarmonyPushConfigured()) return;
-  const routing = JSON.stringify(harmonyRoutingPayload(payload));
+  const event = harmonyRoutingPayload(payload);
+  const routing = JSON.stringify(event);
   for (const endpoint of notificationChannelEndpointsDb.getEnabledEndpoints(userId, 'desktop')) {
     const metadata = notificationChannelEndpointsDb.parseMetadata(endpoint.metadata_json);
-    if (metadata.platform === 'harmonyos' && typeof metadata.huaweiPushToken === 'string') {
+    if (metadata.platform === 'harmonyos' && typeof metadata.huaweiPushToken === 'string' && deviceAllowsEvent(metadata, event.code)) {
       harmonyPushJobsDb.enqueue(userId, endpoint.endpoint_id, routing);
     }
   }
@@ -78,7 +87,7 @@ export async function flushHarmonyPush(): Promise<void> {
         : routing.code === 'run.failed' ? 'error' : routing.code.startsWith('run.') ? 'stop' : null;
       // Re-check revocation, channel and event switches immediately before sending.
       if (!endpoint?.enabled || !prefs.channels.desktop || (eventKey && !prefs.events[eventKey]) ||
-        metadata.platform !== 'harmonyos' || typeof metadata.huaweiPushToken !== 'string') {
+        metadata.platform !== 'harmonyos' || typeof metadata.huaweiPushToken !== 'string' || !deviceAllowsEvent(metadata, routing.code)) {
         harmonyPushJobsDb.remove(job.id);
         continue;
       }

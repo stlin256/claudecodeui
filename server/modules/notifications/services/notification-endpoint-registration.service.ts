@@ -12,5 +12,5 @@ export function registerNotificationEndpoint(input: {
   const preferences = notificationPreferencesDb.updatePreferences(input.userId, {
     ...current, channels: { ...current.channels, [input.channel]: hasEnabledEndpoint },
   });
-  return { endpoint, preferences, harmonyPushConfigured: isHarmonyPushConfigured() };
+  return { endpoint, preferences, harmonyPushConfigured: isHarmonyPushConfigured(), harmonyNotificationLevels: true };
 }

@@ -70,6 +70,11 @@ router.post('/endpoints/current', (req, res) => {
 
     const normalizedMetadata: Record<string, unknown> = metadata && typeof metadata === 'object' && !Array.isArray(metadata) ? metadata : {};
     if (normalizedMetadata.platform === 'harmonyos') {
+      const levels = normalizedMetadata.notificationEvents;
+      if (levels !== undefined && (!levels || typeof levels !== 'object' || Array.isArray(levels) ||
+        ['actionRequired', 'error', 'completion', 'info'].some(key => typeof (levels as Record<string, unknown>)[key] !== 'boolean'))) {
+        return res.status(400).json({ error: 'Invalid HarmonyOS notification levels' });
+      }
       const pushToken = normalizedMetadata.huaweiPushToken;
       if (normalizedChannel !== 'desktop' || normalizedEndpointId.length > 160 ||
         (enabled !== false && (typeof pushToken !== 'string' || pushToken.length < 16 ||
@@ -90,7 +95,8 @@ router.post('/endpoints/current', (req, res) => {
     });
 
     return res.json({ success: true, endpoint: sanitizeEndpoint(result.endpoint),
-      preferences: result.preferences, harmonyPushConfigured: result.harmonyPushConfigured });
+      preferences: result.preferences, harmonyPushConfigured: result.harmonyPushConfigured,
+      harmonyNotificationLevels: result.harmonyNotificationLevels });
   } catch (error) {
     console.error('Error registering notification endpoint:', error);
     return res.status(500).json({ error: 'Failed to register notification endpoint' });
