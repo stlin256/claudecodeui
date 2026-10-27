@@ -1,0 +1,13 @@
+.hvigor/
+oh_modules/
+build/
+.idea/
+local.properties
+/build-profile.json5
+entry/src/main/resources/rawfile/runtime-config.json
+*.hap
+*.app
+*.p12
+*.p7b
+*.cer
+material/

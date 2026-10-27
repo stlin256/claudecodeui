@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { ReactNode } from 'react';
 
 import type { ThemeMode } from '@/shared/types';
+import { useHarmonyAppearance } from '@/modules/native-host';
 import {
   readUserPreference,
   subscribeToUserPreferences,
@@ -55,6 +56,8 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   // The resolved colour. It is not derivable from `themeMode` alone, because
   // under `system` it changes when the OS does, with no state change here.
   const [isDarkMode, setIsDarkMode] = useState(() => resolveIsDarkMode(readStoredThemeMode()));
+  const harmonyAppearance = useHarmonyAppearance();
+  const effectiveDarkMode = harmonyAppearance === null ? isDarkMode : harmonyAppearance === 'dark';
 
   // The theme now lives in auth.db, so a change made on another device (or in
   // another tab) arrives through the preference store rather than a re-render.
@@ -69,7 +72,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   // theme had been fetched — writing this device's system default over the
   // theme the user actually chose on another one.
   useEffect(() => {
-    if (isDarkMode) {
+    if (effectiveDarkMode) {
       document.documentElement.classList.add('dark');
 
       // Update iOS status bar style and theme color for dark mode
@@ -96,7 +99,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
         themeColorMeta.setAttribute('content', '#f6f4ef'); // Light background color (warm cream)
       }
     }
-  }, [isDarkMode]);
+  }, [effectiveDarkMode]);
 
   // Listen for system theme changes
   useEffect(() => {
@@ -137,8 +140,8 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   // A fresh object here would re-render every consumer in the app on any
   // render of this provider, theme change or not.
   const value = useMemo<ThemeContextValue>(
-    () => ({ isDarkMode, toggleDarkMode, themeMode, setThemeMode }),
-    [isDarkMode, toggleDarkMode, themeMode, setThemeMode],
+    () => ({ isDarkMode: effectiveDarkMode, toggleDarkMode, themeMode, setThemeMode }),
+    [effectiveDarkMode, toggleDarkMode, themeMode, setThemeMode],
   );
 
   return (
