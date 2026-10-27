@@ -42,6 +42,8 @@ Delivery uses a SQLite outbox with bounded batches, exponential retries and one-
 
 See [UPSTREAM.md](UPSTREAM.md) for the baseline and merge procedure. Native integration is isolated under this directory and `scripts/harmony`; the web app has one optional native-appearance hook, and backend notification delivery extends the existing channel.
 
+See [VALIDATION.md](VALIDATION.md) for completed checks and remaining acceptance cases.
+
 Before committing, stage the intended source files and run:
 
 ```powershell

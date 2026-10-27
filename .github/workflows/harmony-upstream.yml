@@ -1,0 +1,19 @@
+name: Harmony upstream status
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Compare with upstream
+        shell: bash
+        run: |
+          git remote add harmony-upstream https://github.com/siteboon/claudecodeui.git
+          git fetch harmony-upstream main --tags
+          echo '## Upstream commits absent from this branch' >> "$GITHUB_STEP_SUMMARY"
+          git log --oneline HEAD..harmony-upstream/main >> "$GITHUB_STEP_SUMMARY"

@@ -1,3 +1,5 @@
+> HarmonyOS fork: [native app, CLI build and Push Kit setup](apps/harmony/README.md) · [upstream provenance and updates](apps/harmony/UPSTREAM.md).
+
 <div align="center">
  <img src="public/logo.svg" alt="CloudCLI UI" width="64" height="64">
  <h1>Cloud CLI (aka Claude Code UI)</h1>

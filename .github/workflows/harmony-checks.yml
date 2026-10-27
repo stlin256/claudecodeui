@@ -1,0 +1,32 @@
+name: Harmony integration checks
+on:
+  pull_request:
+    paths:
+      - 'apps/harmony/**'
+      - 'scripts/harmony/**'
+      - 'src/modules/native-host/**'
+      - 'src/shared/context/ThemeContext.tsx'
+      - 'server/modules/notifications/**'
+      - 'server/modules/database/**'
+      - '.github/workflows/harmony-*.yml'
+  push:
+    branches: ['codex/harmonyos-client']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: node --test scripts/harmony/notification-bridge.test.mjs
+      - run: npx tsx --tsconfig server/tsconfig.json --test server/modules/notifications/tests/harmony-push.test.ts server/modules/notifications/tests/notification-orchestrator.integration.test.ts
+      - run: npm run test:client
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
