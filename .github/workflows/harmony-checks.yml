@@ -24,7 +24,8 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - run: node --test scripts/harmony/notification-bridge.test.mjs
+      - run: node scripts/harmony/prepare-assets.mjs --check
+      - run: node --test scripts/harmony/*.test.mjs
       - run: npx tsx --tsconfig server/tsconfig.json --test server/modules/notifications/tests/harmony-push.test.ts server/modules/notifications/tests/notification-orchestrator.integration.test.ts
       - run: npm run test:client
       - run: npm run typecheck

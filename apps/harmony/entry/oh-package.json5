@@ -1,1 +1,1 @@
-{ "name": "entry", "version": "0.1.0", "description": "Original CloudCLI remote UI with HarmonyOS integration", "license": "AGPL-3.0-or-later", "dependencies": {} }
+{ "name": "entry", "version": "0.2.0", "description": "Original CloudCLI remote UI with HarmonyOS integration", "license": "AGPL-3.0-or-later", "dependencies": {} }

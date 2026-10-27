@@ -112,13 +112,13 @@
     const token = localStorage.getItem('auth-token');
     return { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
   };
-  async function endpoint(deviceId, enabled, pushToken) {
+  async function endpoint(deviceId, enabled, pushToken, notificationEvents) {
     const response = await fetch('/api/notifications/endpoints/current', {
       method: 'POST', credentials: 'same-origin', redirect: 'error',
       headers: authHeaders(),
       body: JSON.stringify({ channel: 'desktop', endpointId: deviceId,
         label: 'HarmonyOS', enabled,
-        metadata: { platform: 'harmonyos', huaweiPushToken: pushToken || null } })
+        metadata: { platform: 'harmonyos', huaweiPushToken: pushToken || null, notificationEvents } })
     });
     if (!response.ok || !(response.headers.get('content-type') || '').includes('application/json')) {
       throw new Error('Notification registration failed; sign in and check server configuration.');
@@ -127,11 +127,13 @@
     if (enabled && result.harmonyPushConfigured !== true) {
       throw new Error('Server Huawei Push Kit is not configured.');
     }
+    return result;
   }
   async function getState() {
     const state = JSON.parse(await native.getState());
     return { desktopNotifications: { enabled: state.enabled && state.permitted,
-      supported: true, connectedCount: registered ? 1 : 0, targetCount: 1, lastError } };
+      supported: true, connectedCount: registered ? 1 : 0, targetCount: 1, lastError,
+      notificationEvents: state.notificationEvents || { actionRequired: true, error: true, completion: true, info: true } } };
   }
   async function emit() {
     const state = await getState();
@@ -146,7 +148,7 @@
       const authToken = localStorage.getItem('auth-token');
       if (registered && authToken === lastToken && Date.now() - lastRegistration < 300000) return;
       try {
-        await endpoint(state.deviceId, true, await native.pushToken());
+        await endpoint(state.deviceId, true, await native.pushToken(), state.notificationEvents);
         registered = true;
         lastToken = authToken;
         lastRegistration = Date.now();
@@ -161,6 +163,24 @@
   }
   window.cloudcliDesktopNotifications = Object.freeze({
     getState,
+    async updateEvents(levels) {
+      const keys = ['actionRequired', 'error', 'completion', 'info'];
+      if (!levels || keys.some(key => typeof levels[key] !== 'boolean')) throw new Error('Invalid notification levels');
+      if (inFlight) await inFlight;
+      // Serialize preference updates with registration/token refresh so a stale
+      // background registration cannot overwrite the user's new device policy.
+      inFlight = (async () => {
+        const state = JSON.parse(await native.getState());
+        if (state.enabled && state.permitted) {
+          const result = await endpoint(state.deviceId, true, await native.pushToken(), levels);
+          if (result.harmonyNotificationLevels !== true) throw new Error('请先升级服务器以支持分级通知');
+        }
+        await callNative('setNotificationEvents', JSON.stringify(levels));
+        lastError = null;
+        return emit();
+      })().finally(() => { inFlight = null; });
+      return inFlight;
+    },
     async update(settings) {
       try {
         if (settings.enabled) {
@@ -173,7 +193,7 @@
           if (inFlight) await inFlight;
           const state = JSON.parse(await native.getState());
           // Disable on the server before claiming that remote delivery has stopped.
-          await endpoint(state.deviceId, false, null);
+          await endpoint(state.deviceId, false, null, state.notificationEvents);
           await native.configure(false);
           registered = false;
           lastError = null;

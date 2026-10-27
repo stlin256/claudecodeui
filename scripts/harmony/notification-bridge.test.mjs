@@ -6,7 +6,7 @@ import { JSDOM, VirtualConsole } from 'jsdom';
 const source = readFileSync(new URL('../../apps/harmony/entry/src/main/resources/rawfile/notification-bridge.js', import.meta.url), 'utf8');
 const settle = () => new Promise(resolve => setImmediate(resolve));
 
-function page(fetchResponse, initialToken = null) {
+function page(fetchResponse, initialToken = null, enabled = false) {
   const dom = new JSDOM('<!doctype html><html><body></body></html>', {
     url: 'https://cloudcli.example.invalid/', runScripts: 'outside-only', virtualConsole: new VirtualConsole(),
   });
@@ -14,15 +14,19 @@ function page(fetchResponse, initialToken = null) {
   if (initialToken) window.localStorage.setItem('auth-token', initialToken);
   window.matchMedia = () => ({ matches: false, addEventListener() {} });
   const requests = [];
-  window.fetch = async (url, options) => { requests.push({ url, options }); return fetchResponse(); };
+  window.fetch = async (url, options) => { requests.push({ url, options }); return fetchResponse(url, options); };
+  let levels = { actionRequired: true, error: true, completion: true, info: true };
+  const commands = [];
   window.cloudcliHarmonyNotifications = {
-    request(id, command) {
-      window.__cloudcliHarmonyResponse(id, true, JSON.stringify(command === 'getHostState'
-        ? { themeMode: 'auto' } : { enabled: false, permitted: true, deviceId: 'device' }));
+    request(id, command, value) {
+      commands.push(command);
+      if (command === 'setNotificationEvents') levels = JSON.parse(value);
+      window.__cloudcliHarmonyResponse(id, true, command === 'pushToken' ? 'test-push-token-1234567890' : JSON.stringify(command === 'getHostState'
+        ? { themeMode: 'auto' } : { enabled, permitted: true, deviceId: 'device', notificationEvents: levels }));
     },
   };
   window.eval(source);
-  return { dom, window, requests };
+  return { dom, window, requests, commands };
 }
 
 test('password-only server retains its login when cookie refresh is rejected', async () => {
@@ -33,6 +37,32 @@ test('password-only server retains its login when cookie refresh is rejected', a
     assert.equal(requests.length, 1);
     assert.equal(requests[0].options.credentials, 'same-origin');
     assert.equal(requests[0].options.redirect, 'error');
+  } finally { dom.window.close(); }
+});
+
+test('disabled device keeps notification-level preferences locally without a server request', async () => {
+  const { dom, window, requests } = page(() => { throw new Error('Unexpected request'); }, 'password-token');
+  try {
+    const levels = { actionRequired: true, error: true, completion: false, info: false };
+    const result = await window.cloudcliDesktopNotifications.updateEvents(levels);
+    assert.deepEqual(JSON.parse(JSON.stringify(result.desktopNotifications.notificationEvents)), levels);
+    assert.equal(requests.length, 0);
+  } finally { dom.window.close(); }
+});
+
+test('enabled device sends all levels to the endpoint and refuses unsupported servers', async () => {
+  let supported = false;
+  const { dom, window, requests, commands } = page(() => Response.json({ harmonyPushConfigured: true, harmonyNotificationLevels: supported }), 'password-token', true);
+  try {
+    await settle();
+    const levels = { actionRequired: true, error: false, completion: false, info: true };
+    await assert.rejects(window.cloudcliDesktopNotifications.updateEvents(levels), /升级服务器/);
+    assert.equal(commands.includes('setNotificationEvents'), false);
+    supported = true;
+    await window.cloudcliDesktopNotifications.updateEvents(levels);
+    const body = JSON.parse(requests.at(-1).options.body);
+    assert.deepEqual(body.metadata.notificationEvents, levels);
+    assert.equal(commands.includes('setNotificationEvents'), true);
   } finally { dom.window.close(); }
 });
 

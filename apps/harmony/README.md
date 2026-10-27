@@ -1,5 +1,7 @@
 # CloudCLI for HarmonyOS
 
+[English overview](../../README.md) · [简体中文](../../README.zh-CN.md) · [繁體中文](../../README.zh-TW.md)
+
 ArkWeb hosts the original remote CloudCLI application. There is no copied React UI or separately maintained chat screen. The native layer adds a sidebar **应用设置** entry, device-local light/dark/automatic appearance, connection settings, logout, file selection and Huawei Push Kit registration. System bars remain visible and content stays inside the device safe area.
 
 ## Build using the CLI
@@ -20,7 +22,9 @@ Leave runtime configuration blank for a redistributable app: first launch asks f
 
 ## Push notifications
 
-The app uses the existing desktop notification channel. On this device, enable system notifications in 应用设置 and allow the system permission. Event switches remain in CloudCLI's existing notification settings. The app registers its token against the authenticated user's endpoint; the modified server sends notifications through Huawei even when the app process is absent. Browser/Electron channels retain their existing behavior.
+The app uses the existing desktop notification channel. In 应用设置 → 分级通知, allow system notifications and select action-required, failure, completion and other-message switches, or choose important-only/all/mute presets. These preferences belong to the device; CloudCLI's account-wide event switches additionally constrain delivery. The server checks device policy at enqueue and again before each send, including pending deliveries after a preference change. The app registers its token against the authenticated user's endpoint; the modified server sends notifications through Huawei even when the app process is absent. Browser/Electron channels retain their existing behavior.
+
+The first-launch guide separates the website origin from password/Passkey login configuration. The settings connection page repeats the same steps and validates origins before changing notification registration. About metadata is generated from the native manifest by `scripts/harmony/prepare-assets.mjs`; the public GitHub avatar is bundled so it works offline. APP-only motion is injected into the trusted page and honors reduced-motion preferences without modifying server assets.
 
 The server must run this fork's backend. Create a **project-level service account key** for the same Huawei project as the app, enable Push Kit for the app, and keep the downloaded JSON outside the checkout. An API key or an OAuth client secret is a different credential and will not work. Give the service account only the access needed for push delivery.
 

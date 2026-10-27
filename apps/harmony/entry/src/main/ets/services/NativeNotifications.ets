@@ -58,6 +58,15 @@ export class NativeNotifications {
   private async dispatch(command: string, value: string): Promise<string> {
     if (command === 'getState') return await this.state();
     if (command === 'configure') return await this.configure(value === 'true');
+    if (command === 'setNotificationEvents') {
+      const levels = JSON.parse(value) as Record<string, Object>;
+      if (['actionRequired', 'error', 'completion', 'info'].some((key: string) => typeof levels[key] !== 'boolean')) {
+        throw new Error('Invalid notification levels');
+      }
+      this.settings?.putSync('notificationEvents', JSON.stringify(levels));
+      await this.settings?.flush();
+      return await this.state();
+    }
     if (command === 'pushToken') return await this.pushToken();
     if (command === 'appearance') { WindowAppearance.apply(value === 'true'); return '{}'; }
     if (command === 'clearSession') {
@@ -85,7 +94,9 @@ export class NativeNotifications {
     return JSON.stringify({
       enabled: this.settings?.getSync('enabled', false) === true,
       permitted: await notificationManager.isNotificationEnabled(),
-      deviceId: this.settings?.getSync('deviceId', '')
+      deviceId: this.settings?.getSync('deviceId', ''),
+      notificationEvents: JSON.parse(this.settings?.getSync('notificationEvents',
+        '{"actionRequired":true,"error":true,"completion":true,"info":true}') as string)
     });
   }
 

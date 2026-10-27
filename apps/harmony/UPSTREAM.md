@@ -4,6 +4,8 @@ This repository is a GitHub fork of [siteboon/claudecodeui](https://github.com/s
 
 The maintained integration branch is `codex/harmonyos-client`. The original upstream UI is loaded remotely; upstream frontend improvements appear after updating the server, without porting a separate mobile UI.
 
+Mobile versions and annotated tags use a separate namespace, starting with `harmony-v0.2.0`; they do not rename the upstream package or reuse upstream `v*` tags. Root READMEs describe the mobile fork in English, Simplified Chinese and Traditional Chinese. The baseline upstream README is retained as `README.upstream.md`; resolve future README merge conflicts deliberately so the mobile landing page and upstream attribution are both preserved.
+
 ## Check for updates
 
 ```sh

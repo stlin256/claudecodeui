@@ -24,6 +24,8 @@ try {
     $env:JAVA_HOME = Join-Path $ide 'jbr'
     $env:DEVECO_SDK_HOME = Join-Path $ide 'sdk'
     $env:Path = "$env:NODE_HOME;$env:JAVA_HOME/bin;$savedPath"
+    & (Join-Path $env:NODE_HOME 'node.exe') (Join-Path $PSScriptRoot 'prepare-assets.mjs')
+    if ($LASTEXITCODE -ne 0) { throw 'HarmonyOS asset preparation failed' }
     & (Join-Path $env:NODE_HOME 'node.exe') (Join-Path $ide 'tools/hvigor/bin/hvigorw.js') --mode module -p product=default -p module=entry@default -p "buildMode=$BuildMode" assembleHap --no-daemon
     if ($LASTEXITCODE -ne 0) { throw "HarmonyOS build failed: $LASTEXITCODE" }
 } finally {
