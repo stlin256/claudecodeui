@@ -30,6 +30,14 @@ export class NativeNotifications {
     }
   }
 
+  /** Used by Index's connection guide to revoke delivery before changing servers,
+   * including recovery when the old website cannot disable its endpoint. */
+  async resetConnection(): Promise<void> {
+    if (this.settings?.getSync('enabled', false) === true) await pushService.deleteToken();
+    this.settings?.putSync('enabled', false);
+    await this.settings?.flush();
+  }
+
   private requireOrigin(): void {
     // Checking both the calling frame and top-level page prevents an untrusted iframe
     // or a later OIDC navigation from requesting a token or prompting permissions.

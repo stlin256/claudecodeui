@@ -75,6 +75,7 @@ struct Index {
       this.error = '请输入 HTTPS 源地址（域名及可选端口，不包含路径）';
       return;
     }
+    if (this.config.serverOrigin && this.config.serverOrigin !== origin) await this.notifications?.resetConnection();
     this.config.serverOrigin = origin;
     this.config.authenticationOrigins = authOrigins.map((value: string) => this.origin(value));
     this.config.loginMode = this.loginMode;
@@ -150,6 +151,10 @@ struct Index {
   }
 
   onBackPress(): boolean {
+    if (!this.ready && this.guideStep > 0) {
+      this.getUIContext().animateTo({ duration: 180, curve: Curve.EaseOut }, () => { this.guideStep--; });
+      return true;
+    }
     if (this.settingsOpen) {
       this.controller.runJavaScript('window.cloudcliHarmonyHost?.backSettings()').catch(() => {});
       return true;
