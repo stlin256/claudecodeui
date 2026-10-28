@@ -1,5 +1,9 @@
 # Mobile releases
 
+## Unreleased
+
+- Restore the last chat for each configured server on a normal launch. A notification target takes priority on cold and warm launches; logging out clears the remembered route.
+
 ## 0.2.0 — 2026-10-27
 
 Tag: `harmony-v0.2.0`. The mobile version is independent of upstream CloudCLI v1.37.6.

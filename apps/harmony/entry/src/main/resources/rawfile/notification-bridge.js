@@ -42,6 +42,7 @@
       syncAppearance();
     },
     async logout() {
+      await window.cloudcliHarmonyHost.pauseSessionTracking?.();
       // Remove the server endpoint while this session still authenticates requests.
       // Native token deletion remains available when the server is unreachable.
       try { await window.cloudcliDesktopNotifications.update({ enabled: false }); } catch {}

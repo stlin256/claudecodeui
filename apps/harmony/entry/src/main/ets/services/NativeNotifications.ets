@@ -85,7 +85,7 @@ export class NativeNotifications {
       webview.WebStorage.deleteAllData();
       return await this.hostAction(command, value);
     }
-    if (['getHostState', 'getSettings', 'setTheme', 'saveConnection', 'settingsOpened', 'settingsClosed'].includes(command)) {
+    if (['getHostState', 'getSettings', 'setTheme', 'saveConnection', 'settingsOpened', 'settingsClosed', 'rememberSession'].includes(command)) {
       return await this.hostAction(command, value);
     }
     throw new Error('Unknown native operation');

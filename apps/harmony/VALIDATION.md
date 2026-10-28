@@ -25,4 +25,10 @@ Validated on 2026-10-27 against the v1.37.6 baseline, using SDK 26 and a physica
 | 0.2.0 connection settings | Three sections rendered on-device, existing Passkey mode inferred correctly, no horizontal overflow |
 | Publication guard | Checked changed source against local private identifiers and credential/signing file rules before upload |
 
+## Follow-up validation — 2026-10-28
+
+- Session route bridge tests: 4 passed, covering last-chat persistence, ignored non-chat routes, malformed identifiers, failed-write retry, ordered navigation writes and logout cleanup.
+- Physical device routing: ordinary cold launch restored the last chat; cold notification launch opened its target in preference to the saved chat; a notification Want delivered to a running app switched to its target chat.
+- Native debug package rebuilt and installed after the logout cleanup change.
+
 The live device uses Huawei **test messages** with the `MARKETING` category, so notifications may be silent and remain subject to provider test quotas. `WORK` classification entitlement and production delivery quotas have not been validated. Actual password entry on a separate password-only deployment, first-launch native guide acceptance, real-device logout/token revocation, server switching, tablet layout, and multi-device delivery still need dedicated acceptance testing. Automated password compatibility, guide validation, device independence and revocation tests cover the corresponding protocol behavior.

@@ -22,6 +22,8 @@ struct Index {
   private settings: preferences.Preferences | null = null;
   // Build the Web component only after config, script and native bridge are ready.
   @State private ready: boolean = false;
+  // Resolve the initial route before Web mounts; a notification target wins.
+  @State private initialPage: string = '';
   // Connection setup is shown only until an HTTPS origin has been configured.
   @State private serverInput: string = '';
   // OIDC origins are explicit; no broad wildcard is trusted for authentication.
@@ -91,7 +93,15 @@ struct Index {
         if (command === 'settingsClosed') this.settingsOpen = false;
         if (command === 'clearSession') {
           this.settingsOpen = false;
+          this.requestedSession = '';
+          this.settings?.deleteSync('lastSession:' + this.config.serverOrigin);
+          await this.settings?.flush();
           this.controller.loadUrl(this.config.serverOrigin + '/');
+        }
+        if (command === 'rememberSession') {
+          if (!/^[A-Za-z0-9_-]{1,160}$/.test(value)) throw new Error('Invalid session');
+          this.settings?.putSync('lastSession:' + this.config.serverOrigin, value);
+          await this.settings?.flush();
         }
         if (command === 'setTheme') {
           if (!['light', 'dark', 'auto'].includes(value)) throw new Error('Invalid theme');
@@ -121,8 +131,13 @@ struct Index {
       await this.context.resourceManager.getRawFileContent('app-info.js'));
     const motionScript = util.TextDecoder.create('utf-8').decodeToString(
       await this.context.resourceManager.getRawFileContent('app-motion.js'));
+    const sessionScript = util.TextDecoder.create('utf-8').decodeToString(
+      await this.context.resourceManager.getRawFileContent('app-session.js'));
     // ArkWeb scriptRules match origins, and reject URL path wildcards.
-    this.scripts = [{ script: infoScript + '\n' + notificationScript + '\n' + motionScript + '\n' + settingsScript, scriptRules: [this.config.serverOrigin] }];
+    this.scripts = [{ script: infoScript + '\n' + notificationScript + '\n' + motionScript + '\n' + sessionScript + '\n' + settingsScript, scriptRules: [this.config.serverOrigin] }];
+    const saved = this.settings?.getSync('lastSession:' + this.config.serverOrigin, '') as string;
+    const target = this.requestedSession || saved;
+    this.initialPage = this.config.serverOrigin + (/^[A-Za-z0-9_-]{1,160}$/.test(target) ? '/session/' + encodeURIComponent(target) : '/');
     this.error = '';
     this.ready = true;
   }
@@ -147,7 +162,8 @@ struct Index {
     const id = this.requestedSession;
     this.requestedSession = '';
     // Same route used by the upstream web app; preserve React routing and gateway cookies.
-    this.controller.loadUrl(this.config.serverOrigin + '/session/' + encodeURIComponent(id));
+    const target = this.config.serverOrigin + '/session/' + encodeURIComponent(id);
+    if (this.controller.getUrl().replace(/\/$/, '') !== target) this.controller.loadUrl(target);
   }
 
   onBackPress(): boolean {
@@ -253,7 +269,7 @@ struct Index {
     Stack() {
       Column() {
       if (this.ready) {
-        Web({ src: this.config.serverOrigin + '/', controller: this.controller })
+        Web({ src: this.initialPage, controller: this.controller })
           .width('100%').layoutWeight(1)
           .javaScriptAccess(true).domStorageAccess(true).databaseAccess(true)
           .darkMode(this.themeMode === 'dark' ? WebDarkMode.On : this.themeMode === 'light' ? WebDarkMode.Off : WebDarkMode.Auto)
